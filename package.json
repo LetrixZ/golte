@@ -17,18 +17,18 @@
   },
   "dependencies": {
     "@rollup/plugin-replace": "^5.0.5",
-    "@sveltejs/vite-plugin-svelte": "^3.0.1",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "deepmerge": "^4.3.1",
     "esbuild": "^0.19.9",
     "fast-glob": "^3.3.2",
-    "vite": "^5.0.12"
+    "vite": "^6.2.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "svelte": "^4.2.7"
+    "svelte": "^5.22.6"
   },
   "files": [
     "js",

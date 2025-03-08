@@ -1,3 +1,4 @@
+import { render } from 'svelte/server';
 import { default as UntypedRoot } from "../shared/Root.svelte";
 import { ContextData, ServerComponent } from "../shared/types.js";
 import { handleError } from "../shared/keys.js";
@@ -58,7 +59,10 @@ export function Render(entries: Entry[], contextData: ContextData, errPage: stri
     let error: SSRError | undefined;
     const context = new Map(); // TODO dont use context for this
     context.set(handleError, (e: any) => error = e ) 
-    let { html, head } = Root.render({ nodes: serverNodes, contextData }, { context });
+    let { body: html, head } = render(UntypedRoot, {
+        props: { nodes: serverNodes, contextData },
+        context,
+    });
 
     for (const path of stylesheets) {
         head += `\n<link href="${path}" rel="stylesheet">`;

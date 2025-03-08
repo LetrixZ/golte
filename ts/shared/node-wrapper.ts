@@ -38,4 +38,7 @@ function csrWrapper(options: any): ClientNode {
     return new ClientNode(options);
 };
 
-export const Node: typeof ClientNode = import.meta.env.SSR ? ssrWrapper : csrWrapper as any;
+export const Node = ($$payload: any, $$props: any) => {
+    // @ts-ignore
+    return ServerNode($$payload, $$props);
+};

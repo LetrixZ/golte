@@ -72,12 +72,7 @@ async function extract(inputConfig: Config): Promise<ExtractedConfig> {
                 cssCodeSplit: true,
             },
             plugins: [
-                svelte({
-                    compilerOptions: {
-                        // css: "external",
-                        hydratable: true,
-                    }
-                })
+                svelte()
             ]
         },
     }
