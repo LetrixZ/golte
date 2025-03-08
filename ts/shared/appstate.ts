@@ -56,7 +56,7 @@ export function initState(url: string, nodes: CompState[]) {
                     const bprops = bval?.content.props
                     const aprops = aval?.content.props
 
-                    if (JSON.stringify(bprops) !== JSON.stringify(aprops)) { // nodes have the same props - pass
+                    if (JSON.stringify(bprops) === JSON.stringify(aprops)) { // nodes have the same props - pass
                         // neiter bval nor aval can be null at this point - typescript isn't smart enough to figure that out
 
                         //@ts-ignore
