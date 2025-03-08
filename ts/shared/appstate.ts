@@ -52,18 +52,26 @@ export function initState(url: string, nodes: CompState[]) {
                 const bcomp = bval?.content.comp;
                 const acomp = aval?.content.comp;
         
-                if (bcomp === acomp) { // nodes are same component - pass
-                    // neiter bval nor aval can be null at this point - typescript isn't smart enough to figure that out
-        
-                    //@ts-ignore
-                    before = bval.next;
-        
-                    //@ts-ignore
-                    after = aval.next;
-                } else { // nodes are different components - replace
-                    before.set(aval);
-                    break;
+                if (bcomp === acomp) { // nodes are same component - compare props
+                    const bprops = bval?.content.props
+                    const aprops = aval?.content.props
+
+                    if (JSON.stringify(bprops) !== JSON.stringify(aprops)) { // nodes have the same props - pass
+                        // neiter bval nor aval can be null at this point - typescript isn't smart enough to figure that out
+
+                        //@ts-ignore
+                        before = bval.next;
+
+                        //@ts-ignore
+                        after = aval.next;
+
+                        continue
+                    }
                 }
+
+                // nodes are different components or have different props - replace
+                before.set(aval);
+                break;
             }
         }
     }
