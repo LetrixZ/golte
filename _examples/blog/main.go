@@ -38,6 +38,10 @@ func main() {
 	blogRoutes(r)
 	authRoutes(r)
 
+	r.Get("/error", func(w http.ResponseWriter, r *http.Request) {
+		golte.RenderPage(w, r, "page/error", nil)
+	})
+
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		golte.RenderError(w, r, "Not Found", http.StatusNotFound)
 	})

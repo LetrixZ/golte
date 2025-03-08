@@ -15,6 +15,7 @@
         {:else}
             <a use:preload href="/login">Log In</a>
         {/if}
+        <a use:preload href="/error">Error</a>
     </div>
 </nav>
 
