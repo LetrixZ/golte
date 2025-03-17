@@ -1,9 +1,7 @@
-import { default as UntypedRoot } from "../shared/Root.svelte";
-import { ContextData, ServerComponent } from "../shared/types.js";
+import { render } from "svelte/server";
 import { handleError } from "../shared/keys.js";
-import { ErrorProps, ClientNode } from "../shared/types.js";
-
-const Root: ServerComponent = UntypedRoot as any;
+import Root from "../shared/Root.svelte";
+import { ClientNode, ContextData, ErrorProps } from "../shared/types.js";
 
 // these variables will be set by vite
 
@@ -22,15 +20,14 @@ type Entry = {
 };
 
 type ServerNode = {
-    comp: any,
-    props: Record<string, any>,
-    errPage: any,
+    comp: any;
+    props: Record<string, any>;
+    errPage: any;
 };
 
-
 type SSRError = {
-    index: number,
-    props: ErrorProps,
+    index: number;
+    props: ErrorProps;
 };
 
 export function Render(entries: Entry[], contextData: ContextData, errPage: string) {
@@ -57,8 +54,11 @@ export function Render(entries: Entry[], contextData: ContextData, errPage: stri
 
     let error: SSRError | undefined;
     const context = new Map(); // TODO dont use context for this
-    context.set(handleError, (e: any) => error = e ) 
-    let { html, head } = Root.render({ nodes: serverNodes, contextData }, { context });
+    context.set(handleError, (e: any) => (error = e));
+    let { body, head } = render(Root, {
+        props: { nodes: serverNodes, contextData },
+        context,
+    });
 
     for (const path of stylesheets) {
         head += `\n<link href="${path}" rel="stylesheet">`;
@@ -68,7 +68,7 @@ export function Render(entries: Entry[], contextData: ContextData, errPage: stri
         clientNodes[error.index].ssrError = error.props;
     }
 
-    html += `
+    body += `
         <script>
             (async function () {
                 const target = document.currentScript.parentElement;
@@ -80,9 +80,9 @@ export function Render(entries: Entry[], contextData: ContextData, errPage: stri
 
     return {
         Head: head,
-        Body: html,
+        Body: body,
         HasError: !!error,
-    }
+    };
 }
 
 function stringify(object: any) {

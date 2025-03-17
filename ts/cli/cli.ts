@@ -10,7 +10,7 @@ import { existsSync } from "node:fs";
 import { build as esbuild } from "esbuild";
 import glob from "fast-glob";
 import merge from "deepmerge";
-import replace from '@rollup/plugin-replace';
+import replace from "@rollup/plugin-replace";
 import { Config } from "../public/config/index.js";
 import { embed } from "./templates.js";
 import { jsdir, toPosix, clean, traverseCSS } from "./util.js";
@@ -28,12 +28,7 @@ async function main() {
 }
 
 async function resolveConfig(): Promise<Config> {
-    const defaultConfigFiles = [
-        "golte.config.js",
-        "golte.config.mjs",
-        "golte.config.ts",
-        "golte.config.mts",
-    ];
+    const defaultConfigFiles = ["golte.config.js", "golte.config.mjs", "golte.config.ts", "golte.config.mts"];
 
     const resolvedPath = defaultConfigFiles.find(existsSync);
     if (!resolvedPath) return {};
@@ -71,16 +66,9 @@ async function extract(inputConfig: Config): Promise<ExtractedConfig> {
             build: {
                 cssCodeSplit: true,
             },
-            plugins: [
-                svelte({
-                    compilerOptions: {
-                        // css: "external",
-                        hydratable: true,
-                    }
-                })
-            ]
+            plugins: [svelte()],
         },
-    }
+    };
 
     const config = merge(defaultConfig, inputConfig);
 
@@ -112,7 +100,7 @@ async function extract(inputConfig: Config): Promise<ExtractedConfig> {
         components,
         package: packageName,
         dev: mode === "dev",
-    }
+    };
 }
 
 async function buildClient(config: ExtractedConfig): Promise<ClientBuild> {
@@ -143,7 +131,7 @@ async function buildClient(config: ExtractedConfig): Promise<ClientBuild> {
                     sourcemapPathTransform(relativeSourcePath, sourcemapPath) {
                         return pathToFileURL(join(dirname(sourcemapPath), relativeSourcePath)).href;
                     },
-                }
+                },
             },
         },
         // appType: "custom",
@@ -154,11 +142,11 @@ async function buildClient(config: ExtractedConfig): Promise<ClientBuild> {
     const manifestPath = join(config.outDir, "client/.vite/manifest.json");
     const manifestFile = await readFile(manifestPath, "utf-8");
     await rm(manifestPath);
-    
+
     const templatePath = join(config.outDir, "client", config.template);
     const templateFile = await readFile(templatePath);
     await rm(templatePath);
-    
+
     await clean(join(config.outDir, "client"));
 
     return {
@@ -171,7 +159,7 @@ async function createImports(components: ComponentFile[]) {
     let str = ``;
     for (const i in components) {
         const { path } = components[i];
-        str += `import component_${i} from "${toPosix(join(cwd(), path))}";\n`
+        str += `import component_${i} from "${toPosix(join(cwd(), path))}";\n`;
     }
     return str;
 }
@@ -204,10 +192,11 @@ async function buildServer(config: ExtractedConfig, client: ClientBuild) {
             //@ts-ignore for some reason there is typescript error here
             replace({
                 golteImports: await createImports(config.components),
-                golteHydrate: `"` + toPosix(join("/", config.assets, client.manifest[jsdir + "/client/hydrate.js"].file)) + `"`,
+                golteHydrate:
+                    `"` + toPosix(join("/", config.assets, client.manifest[jsdir + "/client/hydrate.js"].file)) + `"`,
                 golteManifest: await createManifest(config.components, client.manifest, config.assets),
                 golteAssets: `"${config.assets}"`,
-            })
+            }),
         ],
         mode: config.dev ? "development" : "production",
         ssr: {
@@ -221,10 +210,7 @@ async function buildServer(config: ExtractedConfig, client: ClientBuild) {
             sourcemap: config.dev,
             // lib: {}, // https://github.com/vitejs/vite/issues/4454
             rollupOptions: {
-                input: [
-                    `./${jsdir}/server/render.js`,
-                    `./${jsdir}/server/info.js`,
-                ],
+                input: [`./${jsdir}/server/render.js`, `./${jsdir}/server/info.js`],
                 output: {
                     format: "cjs",
                     entryFileNames: "[name].js",
@@ -237,7 +223,7 @@ async function buildServer(config: ExtractedConfig, client: ClientBuild) {
                         sourcemapPath = relative(cwd(), sourcemapPath);
                         return join(dirname(sourcemapPath), relativeSourcePath);
                     },
-                }
+                },
             },
         },
         // appType: "custom",
@@ -249,4 +235,3 @@ async function buildServer(config: ExtractedConfig, client: ClientBuild) {
 }
 
 await main();
-

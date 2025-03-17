@@ -20,7 +20,7 @@ export async function clean(path: string) {
         await clean(item);
         if ((await readdir(item)).length === 0) {
             rm(item, { recursive: true });
-        };
+        }
     }
 }
 

@@ -1,16 +1,16 @@
 import { UserConfig } from "vite";
 
 export type ComponentFile = {
-    name: string,
-    path: string
+    name: string;
+    path: string;
 };
 
 export type ViteManifest = Record<string, ViteManifestEntry>;
 
 export type ViteManifestEntry = {
-    file: string,
-    css: string,
-    imports: string,
+    file: string;
+    css: string;
+    imports: string;
 };
 
 export type ExtractedConfig = {

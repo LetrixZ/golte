@@ -1,5 +1,5 @@
 import { Action } from "svelte/action";
-import { load, state } from "../shared/appstate.js";
+import { load, state } from "../shared/appstate.svelte.js";
 
 type Preload = "mount" | "tap" | "hover";
 
