@@ -2,6 +2,7 @@ package golte
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -12,6 +13,22 @@ import (
 // Props is an alias for map[string]any. It exists for documentation purposes.
 // Props must be JSON-serializable when passing to fuctions defined in this package.
 type Props = map[string]any
+
+type ActionFunc = func(r *http.Request, headers http.Header) (map[string]any, int, error)
+
+func checkActionName(name string, query string) bool {
+	if len(query) == 0 {
+		return len(name) == 0
+	}
+
+	if query[0] != '/' {
+		return false
+	}
+
+	queryName := query[1 : len(query)-1]
+
+	return queryName == name
+}
 
 // New constructs a golte middleware from the given filesystem.
 // The root of the filesystem should be the golte build directory.
@@ -92,6 +109,12 @@ func Page(component string) http.HandlerFunc {
 	})
 }
 
+func PageActions(component string, actions map[string]ActionFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		RenderPageActions(w, r, component, nil, actions)
+	})
+}
+
 // AddLayout appends the component to the request.
 // Layouts consist of any components with a <slot>.
 // Calling this multiple times on the same request will nest layouts.
@@ -121,6 +144,38 @@ func RenderPage(w http.ResponseWriter, r *http.Request, component string, props 
 		Props: props,
 	})
 	rctx.Render(w)
+}
+
+func RenderPageActions(w http.ResponseWriter, r *http.Request, component string, props Props, actions map[string]ActionFunc) {
+	if r.Method == "POST" {
+		if contentType := r.Header.Get("content-type"); contentType != "application/x-www-form-urlencoded" {
+			RenderError(w, r, fmt.Sprintf("unexpected content %s, only url encoded forms are supported", contentType), http.StatusUnprocessableEntity)
+			return
+		}
+
+		for name, action := range actions {
+			if checkActionName(name, r.URL.RawQuery) {
+				result, status, err := action(r, w.Header())
+
+				if err != nil {
+					RenderError(w, r, err.Error(), status)
+					return
+				}
+
+				w.WriteHeader(status)
+
+				if props == nil {
+					props = map[string]any{}
+				}
+
+				props["form"] = result
+
+				break
+			}
+		}
+	}
+
+	RenderPage(w, r, component, props)
 }
 
 // RenderError renders the current error page along with layouts.
