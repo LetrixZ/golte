@@ -1,23 +1,18 @@
-<!-- Do not import this directly; instead import node-wrapper.js -->
-
-<script>
+<script lang="ts">
+    import { ListNode } from "./list.js";
     import { Node } from "./node-wrapper.js";
+    import { CompState } from "./types.js";
 
-    /** @type {import("./list.js").ListNode<import("./types.js").CompState>} */
-    export let node;
+    const { node, index }: { node: ListNode<CompState>; index: number } = $props();
+    const { next, content } = $derived(node);
 
-    /** @type {number} */
-    export let index;
-
-    const { next, content } = node;
+    const Component = $derived(content.comp);
 </script>
 
-<svelte:component this={content.comp} {...content.props}>
-    <!-- #key is needed because csr error handling relies on constructor being called again -->
+<Component {...content.props}>
     {#key next}
         {#if next}
-            <!-- Cannot use svelte:self because need to use wrapper -->
             <Node node={next} index={index + 1} />
         {/if}
     {/key}
-</svelte:component>
+</Component>

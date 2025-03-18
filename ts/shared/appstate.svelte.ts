@@ -16,8 +16,8 @@ class AppState {
     #url = $state(new URL("https://example.com"));
     #node = $state<StoreList<CompState>>(null);
 
-    #hrefMap: Record<string, Promise<CompState[]>> = {};
-    #update: (href: string) => Promise<void> = async () => {};
+    hrefMap: Record<string, Promise<CompState[]>> = {};
+    update: (href: string) => Promise<void> = async () => {};
 
     get url() {
         return this.#url;
@@ -27,67 +27,90 @@ class AppState {
         return this.#node;
     }
 
-    get hrefMap() {
-        return this.#hrefMap;
-    }
+    get currentNode() {
+        let node = this.#node;
 
-    get update() {
-        return this.#update;
+        while (node?.next) {
+            node = node.next;
+        }
+
+        return node;
     }
 
     initState(url: string, nodes: CompState[]) {
         this.#url = new URL(url);
+
         this.#node = fromArray(nodes);
 
         if (import.meta.env.SSR) {
             return;
         }
 
-        this.#hrefMap = {
+        this.hrefMap = {
             [url]: new Promise((r) => r(nodes)),
         };
 
-        this.#update = async (href: string) => {
+        this.update = async (href: string) => {
+            this.#url = new URL(href);
+
             const array = await (this.hrefMap[href] ?? load(href));
 
             // this loop replaces the first differentiated node from after onto before
             // the reason this is done instead of simply replacing the first node is so we don't rerender unnecessary nodes
             // this allows for data persistence in already rendered nodes
-            let before = state.node;
             let after = fromArray(array);
 
-            while (true) {
-                if (!before && !after) break; // both nodes are null - end of list, no diff
+            let current = state.node;
+            let previous: StoreList<CompState> = null;
 
-                const bcomp = before?.content.comp;
+            while (current) {
+                const bcomp = current.content.comp;
                 const acomp = after?.content.comp;
 
                 if (bcomp === acomp) {
-                    // nodes are same component - compare props
-                    const bprops = before?.content.props;
+                    // Nodes are the same component - compare props
+                    const bprops = current.content.props;
                     const aprops = after?.content.props;
 
                     if (JSON.stringify(bprops) === JSON.stringify(aprops)) {
-                        // nodes have the same props - pass
-                        // neiter bval nor aval can be null at this point - typescript isn't smart enough to figure that out
-
-                        //@ts-ignore
-                        before = before.next;
-
-                        //@ts-ignore
-                        after = after.next;
-
+                        // Nodes have the same props - move to the next node
+                        previous = current;
+                        current = current.next;
+                        after = after!.next; // Safe to use ! because we know `after` is not null here
                         continue;
                     }
                 }
 
-                // nodes are different components or have different props - replace
-                this.#node = after;
+                // Nodes are different components or have different props - update the linked list
+                if (previous) {
+                    // If `previous` exists, update its `next` pointer to point to `after`
+                    previous.next = after;
+                } else {
+                    // If `previous` is null, update the head of the linked list (`state.node`)
+                    this.#node = after;
+                }
+
                 break;
             }
 
-            this.#url = new URL(href);
+            // If the loop ended without finding a difference, append the remaining `after` nodes
+            if (!current && previous) {
+                previous.next = after;
+            }
         };
+    }
+
+    updateCurrentNode(newNode: CompState) {
+        const lastNode = this.currentNode;
+
+        if (!lastNode) {
+            // If the list is empty, initialize it with the new node
+            this.#node = { content: newNode, next: null };
+            return;
+        }
+
+        // Update the last node's content
+        lastNode.content = newNode;
     }
 }
 

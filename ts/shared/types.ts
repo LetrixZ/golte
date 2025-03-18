@@ -1,4 +1,4 @@
-import type { ComponentType } from "svelte";
+import type { Component } from "svelte";
 
 export type ErrorProps = {
     status: number;
@@ -37,7 +37,7 @@ export type ServerComponent = {
 };
 
 export type CompState = {
-    comp: ComponentType;
+    comp: Component;
     props: Record<string, any>;
-    errPage: ComponentType;
+    errPage: Component;
 };

@@ -1,6 +1,4 @@
-import { writable, Writable } from "svelte/store";
-
-// Creates a singly linked list from the given array, using svelte stores for reactivity
+/** Creates a singly linked list from the given array */
 export function fromArray<T>(array: T[]): StoreList<T> {
     let current: StoreList<T> = null;
 

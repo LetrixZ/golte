@@ -32,8 +32,21 @@ export const preload = ((a: HTMLAnchorElement, preload: Preload = "hover") => {
  * Navigate to the url without reloading the page.
  * This function should be called for internal URLs only.
  */
-export async function goto(url: string | URL) {
+export async function goto(url: string | URL, { invalidateAll: shouldInvalidateAll = false } = {}) {
+    if (shouldInvalidateAll) {
+        await invalidateAll();
+    }
+
     const href = typeof url === "string" ? new URL(url, location.href).href : url.href;
     await state.update(href);
     history.pushState(href, "", href);
+}
+
+export async function invalidateAll() {
+    if (import.meta.env.SSR) {
+        throw new Error("Cannot call invalidateAll() on the server");
+    }
+
+    state.hrefMap = {};
+    await state.update(location.href);
 }

@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"strings"
 
+	"github.com/nichady/golte/action"
 	"github.com/nichady/golte/render"
 )
 
@@ -14,7 +16,7 @@ import (
 // Props must be JSON-serializable when passing to fuctions defined in this package.
 type Props = map[string]any
 
-type ActionFunc = func(r *http.Request, headers http.Header) (map[string]any, int, error)
+type ActionFunc = func(r *http.Request, headers http.Header) action.ActionResult
 
 func checkActionName(name string, query string) bool {
 	if len(query) == 0 {
@@ -148,29 +150,63 @@ func RenderPage(w http.ResponseWriter, r *http.Request, component string, props 
 
 func RenderPageActions(w http.ResponseWriter, r *http.Request, component string, props Props, actions map[string]ActionFunc) {
 	if r.Method == "POST" {
+		csr := r.Header["Golte"] != nil
+
 		if contentType := r.Header.Get("content-type"); contentType != "application/x-www-form-urlencoded" {
 			RenderError(w, r, fmt.Sprintf("unexpected content %s, only url encoded forms are supported", contentType), http.StatusUnprocessableEntity)
 			return
 		}
 
-		for name, action := range actions {
+		for name, actionFunc := range actions {
 			if checkActionName(name, r.URL.RawQuery) {
-				result, status, err := action(r, w.Header())
+				result := actionFunc(r, w.Header())
 
-				if err != nil {
-					RenderError(w, r, err.Error(), status)
+				if csr {
+					csrResponse, err := result.ToCSR()
+
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						w.Write([]byte("Internal Error"))
+						return
+					}
+
+					if result.Type == action.ActionResultError {
+						w.WriteHeader(result.Status)
+					} else {
+						w.WriteHeader(http.StatusOK)
+					}
+
+					w.Write(csrResponse)
 					return
 				}
 
-				w.WriteHeader(status)
+				if result.Type == action.ActionResultRedirect {
+					origin := r.Header.Get("origin")
+					referer := r.Header.Get("referer")
+
+					if referer != "" && strings.HasPrefix(referer, origin) && referer != fmt.Sprintf("%s%s", origin, r.URL.Path) {
+						result = action.Success(result.Data)
+					}
+				}
 
 				if props == nil {
 					props = map[string]any{}
 				}
 
-				props["form"] = result
-
-				break
+				switch result.Type {
+				case action.ActionResultSuccess:
+					props["form"] = result.Data
+				case action.ActionResultFailure:
+					props["form"] = result.Data
+					props["status"] = result.Status
+				case action.ActionResultRedirect:
+					http.Redirect(w, r, result.Location, result.Status)
+					return
+				case action.ActionResultError:
+					log.Println(result.Error)
+					RenderError(w, r, "Internal Error", http.StatusInternalServerError)
+					return
+				}
 			}
 		}
 	}
