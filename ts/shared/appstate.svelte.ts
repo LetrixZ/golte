@@ -12,12 +12,22 @@ type ResponseEntry = {
     CSS: string[];
 };
 
+type HrefState = {
+    components: Promise<CompState[]>;
+    location: string | undefined;
+};
+
 class AppState {
     #url = $state(new URL("https://example.com"));
     #node = $state<StoreList<CompState>>(null);
 
-    hrefMap: Record<string, Promise<CompState[]>> = {};
-    update: (href: string) => Promise<void> = async () => {};
+    hrefMap: Record<string, HrefState> = {};
+    /**
+     * Updates node tree state
+     * @param url URL to update
+     * @returns If a redirect occurs, it returns the new location
+     */
+    update: (url: string | URL) => Promise<string | undefined> = async () => undefined;
 
     get url() {
         return this.#url;
@@ -47,13 +57,27 @@ class AppState {
         }
 
         this.hrefMap = {
-            [url]: new Promise((r) => r(nodes)),
+            [url]: { components: new Promise((r) => r(nodes)), location: undefined },
         };
 
-        this.update = async (href: string) => {
-            this.#url = new URL(href);
+        this.update = async (url: string | URL) => {
+            let newLocation: string | undefined = undefined;
 
-            const array = await (this.hrefMap[href] ?? load(href));
+            let array: CompState[];
+
+            const href = typeof url === "string" ? url : url.href;
+
+            if (href in this.hrefMap) {
+                const { location: hrefLocation, components } = this.hrefMap[href];
+                newLocation = hrefLocation;
+                this.#url = new URL(newLocation ?? href);
+                array = await components;
+            } else {
+                const { location: loadedLocation, components } = await load(href);
+                newLocation = loadedLocation;
+                this.#url = new URL(newLocation ?? href);
+                array = await components;
+            }
 
             // this loop replaces the first differentiated node from after onto before
             // the reason this is done instead of simply replacing the first node is so we don't rerender unnecessary nodes
@@ -97,6 +121,8 @@ class AppState {
             if (!current && previous) {
                 previous.next = after;
             }
+
+            return newLocation;
         };
     }
 
@@ -116,7 +142,7 @@ class AppState {
 
 export const state = new AppState();
 
-export async function load(href: string) {
+export async function load(href: string): Promise<HrefState> {
     const headers = { Golte: "true" };
     const resp = await fetch(href, { headers });
     const json: CSRResponse = await resp.json();
@@ -139,5 +165,8 @@ export async function load(href: string) {
         errPage: (await import(json.ErrPage.File)).default,
     }));
 
-    return await Promise.all(promises);
+    return {
+        components: Promise.all(promises),
+        location: resp.redirected ? resp.url : undefined,
+    };
 }

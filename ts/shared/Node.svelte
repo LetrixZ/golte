@@ -1,9 +1,12 @@
-<script lang="ts">
-    import { ListNode } from "./list.js";
+<script>
     import { Node } from "./node-wrapper.js";
-    import { CompState } from "./types.js";
 
-    const { node, index }: { node: ListNode<CompState>; index: number } = $props();
+    /**
+     * @typedef {Object}
+     * @property {import("./list.js").ListNode<import("./types.js").CompState>} node
+     * @property {number} index
+     */
+    const { node, index } = $props();
     const { next, content } = $derived(node);
 
     const Component = $derived(content.comp);

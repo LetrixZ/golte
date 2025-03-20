@@ -23,30 +23,37 @@ export async function applyAction(result: ActionResult) {
         throw new Error("Cannot call applyAction(...) on the server");
     }
 
-    if (result.type === "error") {
-        const currentNode = state.currentNode;
+    switch (result.type) {
+        case "redirect":
+            await goto(result.location, { invalidateAll: true });
+            break;
+        case "error": {
+            const currentNode = state.currentNode;
 
-        if (currentNode) {
-            state.updateCurrentNode({
-                comp: currentNode.content.errPage,
-                errPage: currentNode.content.errPage,
-                props: {
-                    status: 500,
-                    message: result.error.message,
-                },
-            });
+            if (currentNode) {
+                state.updateCurrentNode({
+                    comp: currentNode.content.errPage,
+                    errPage: currentNode.content.errPage,
+                    props: {
+                        status: 500,
+                        message: result.error.message,
+                    },
+                });
+            }
+
+            break;
         }
-    } else if (result.type === "redirect") {
-        await goto(result.location, { invalidateAll: true });
-    } else {
-        const currentNode = state.currentNode;
+        case "success":
+        case "failure": {
+            const currentNode = state.currentNode;
 
-        if (currentNode) {
-            currentNode.content.props = {
-                ...currentNode.content.props,
-                form: result.data,
-                status: result.status,
-            };
+            if (currentNode) {
+                currentNode.content.props = {
+                    ...currentNode.content.props,
+                    form: result.data,
+                    status: result.status,
+                };
+            }
         }
     }
 }

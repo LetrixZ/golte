@@ -128,8 +128,9 @@ type renderfile struct {
 
 // Entry represents a component to be rendered, along with its props.
 type Entry struct {
-	Comp  string
-	Props map[string]any
+	Comp     string
+	Props    map[string]any
+	IsLayout bool
 }
 
 type SvelteContextData struct {

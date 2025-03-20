@@ -11,7 +11,7 @@ export const preload = ((a: HTMLAnchorElement, preload: Preload = "hover") => {
     async function loadAnchor() {
         if (a.origin !== location.origin) return;
         if (a.href in state.hrefMap) return;
-        state.hrefMap[a.href] = load(a.href);
+        state.hrefMap[a.href] = await load(a.href);
     }
 
     if (preload === "mount") loadAnchor();
@@ -37,9 +37,9 @@ export async function goto(url: string | URL, { invalidateAll: shouldInvalidateA
         await invalidateAll();
     }
 
-    const href = typeof url === "string" ? new URL(url, location.href).href : url.href;
-    await state.update(href);
-    history.pushState(href, "", href);
+    let href = typeof url === "string" ? new URL(url, location.href).href : url.href;
+    const newLocation = await state.update(href);
+    history.pushState(newLocation ?? href, "", newLocation ?? href);
 }
 
 export async function invalidateAll() {

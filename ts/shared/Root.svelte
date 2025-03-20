@@ -1,10 +1,14 @@
-<script lang="ts">
+<script>
     import { onMount } from "svelte";
     import { state as state } from "./appstate.svelte.js";
     import { Node } from "./node-wrapper.js";
-    import { CompState, ContextData } from "./types.js";
 
-    const { nodes, contextData }: { nodes: CompState[]; contextData: ContextData } = $props();
+    /**
+     * @typedef {Object}
+     * @property {import("./types.js").CompState[]} node
+     * @property {import("./types.js").ContextData} contextData
+     */
+    const { nodes, contextData } = $props();
 
     state.initState(contextData.URL, nodes);
 

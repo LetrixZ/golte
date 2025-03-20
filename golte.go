@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -78,6 +79,27 @@ func New(fsys fs.FS) func(http.Handler) http.Handler {
 	}
 }
 
+// GetParentProps returns props from parent layout components.
+// Props with the same key will be replaced by the most recent layout.
+// Returns nil if no props are found.
+func GetParentProps(r *http.Request) Props {
+	rctx := MustGetRenderContext(r)
+
+	layoutProps := Props{}
+
+	for _, entry := range rctx.Components {
+		if entry.IsLayout && entry.Props != nil {
+			maps.Copy(layoutProps, entry.Props)
+		}
+	}
+
+	if len(layoutProps) > 0 {
+		return layoutProps
+	}
+
+	return nil
+}
+
 // Layout returns a middleware that calls [AddLayout].
 // Use this when there are no props needed to render the component.
 // If you need to pass props, use [AddLayout] instead.
@@ -123,8 +145,9 @@ func PageActions(component string, actions map[string]ActionFunc) http.HandlerFu
 func AddLayout(r *http.Request, component string, props Props) {
 	rctx := MustGetRenderContext(r)
 	rctx.Components = append(rctx.Components, render.Entry{
-		Comp:  component,
-		Props: props,
+		Comp:     component,
+		Props:    props,
+		IsLayout: true,
 	})
 }
 
@@ -141,9 +164,20 @@ func SetError(r *http.Request, component string) {
 // of the last layout.
 func RenderPage(w http.ResponseWriter, r *http.Request, component string, props Props) {
 	rctx := MustGetRenderContext(r)
+
+	layoutProps := GetParentProps(r)
+
+	if layoutProps != nil {
+		if props == nil {
+			props = Props{}
+		}
+
+		maps.Copy(layoutProps, props)
+	}
+
 	rctx.Components = append(rctx.Components, render.Entry{
 		Comp:  component,
-		Props: props,
+		Props: layoutProps,
 	})
 	rctx.Render(w)
 }
@@ -219,10 +253,13 @@ func RenderPageActions(w http.ResponseWriter, r *http.Request, component string,
 // It will also write the status code to the header.
 func RenderError(w http.ResponseWriter, r *http.Request, message string, status int) {
 	rctx := MustGetRenderContext(r)
-	entry := render.Entry{Comp: rctx.ErrPage, Props: Props{
-		"message": message,
-		"status":  status,
-	}}
+	entry := render.Entry{
+		Comp: rctx.ErrPage,
+		Props: Props{
+			"message": message,
+			"status":  status,
+		},
+	}
 	rctx.Components = append(rctx.Components, entry)
 	rctx.Render(respWriterWrapper{w})
 }
