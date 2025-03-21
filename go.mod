@@ -5,7 +5,6 @@ go 1.23
 toolchain go1.24.1
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/dop251/goja v0.0.0-20231027120936-b396bb4c349d
 	github.com/dop251/goja_nodejs v0.0.0-20231022114343-5c1f9037c9ab
 	github.com/go-rod/rod v0.114.5

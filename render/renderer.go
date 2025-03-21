@@ -15,25 +15,25 @@ import (
 
 // Renderer is a renderer for svelte components. It is safe to use concurrently across threads.
 type Renderer struct {
-	renderfile renderfile
+	renderfile *renderfile
 	infofile   infofile
-
-	template *template.Template
-	vm       *goja.Runtime
-	mtx      sync.Mutex
+	clientDir  *fs.FS
+	template   *template.Template
+	vm         *goja.Runtime
+	mtx        sync.Mutex
 }
 
 // New constructs a renderer from the given FS.
 // The FS should be the "server" subdirectory of the build output from "npx golte".
 // The second argument is the path where the JS, CSS, and other assets are expected to be served.
-func New(fsys fs.FS) *Renderer {
-	tmpl := template.Must(template.New("").ParseFS(fsys, "template.html")).Lookup("template.html")
+func New(serverFS *fs.FS, clientFS *fs.FS) *Renderer {
+	tmpl := template.Must(template.New("").ParseFS(*serverFS, "template.html")).Lookup("template.html")
 
 	vm := goja.New()
-	vm.SetFieldNameMapper(fieldMapper{"json"})
+	vm.SetFieldNameMapper(NewFieldMapper("json"))
 
 	require.NewRegistryWithLoader(func(path string) ([]byte, error) {
-		return fs.ReadFile(fsys, path)
+		return fs.ReadFile(*serverFS, path)
 	}).Enable(vm)
 
 	console.Enable(vm)
@@ -52,24 +52,25 @@ func New(fsys fs.FS) *Renderer {
 	}
 
 	return &Renderer{
+		clientDir:  clientFS,
 		template:   tmpl,
 		vm:         vm,
-		renderfile: renderfile,
+		renderfile: &renderfile,
 		infofile:   infofile,
 	}
 }
 
 type RenderData struct {
-	Entries []Entry
+	Entries *[]Entry
 	ErrPage string
 	SCData  SvelteContextData
 }
 
 // Render renders a slice of entries into the writer.
-func (r *Renderer) Render(w http.ResponseWriter, data RenderData, csr bool) error {
+func (r *Renderer) Render(w http.ResponseWriter, data *RenderData, csr bool) error {
 	if !csr {
 		r.mtx.Lock()
-		result, err := r.renderfile.Render(data.Entries, data.SCData, data.ErrPage)
+		result, err := r.renderfile.Render(*data.Entries, data.SCData, data.ErrPage)
 		r.mtx.Unlock()
 
 		if err != nil {
@@ -87,7 +88,7 @@ func (r *Renderer) Render(w http.ResponseWriter, data RenderData, csr bool) erro
 	}
 
 	var resp csrResponse
-	for _, v := range data.Entries {
+	for _, v := range *data.Entries {
 		comp := r.renderfile.Manifest[v.Comp]
 		resp.Entries = append(resp.Entries, responseEntry{
 			File:  comp.Client,

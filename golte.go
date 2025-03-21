@@ -1,6 +1,7 @@
 package golte
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/fs"
@@ -51,7 +52,7 @@ func New(fsys fs.FS) func(http.Handler) http.Handler {
 		panic(err)
 	}
 
-	renderer := render.New(serverDir)
+	renderer := render.New(&serverDir, &clientDir)
 	assets := http.StripPrefix("/"+renderer.Assets()+"/", fileServer(clientDir))
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -172,12 +173,16 @@ func RenderPage(w http.ResponseWriter, r *http.Request, component string, props 
 			props = Props{}
 		}
 
-		maps.Copy(layoutProps, props)
+		for key, value := range layoutProps {
+			if _, exists := props[key]; !exists {
+				props[key] = value
+			}
+		}
 	}
 
 	rctx.Components = append(rctx.Components, render.Entry{
 		Comp:  component,
-		Props: layoutProps,
+		Props: props,
 	})
 	rctx.Render(w)
 }
@@ -269,6 +274,45 @@ type respWriterWrapper struct {
 	http.ResponseWriter
 }
 
-func (w respWriterWrapper) WriteHeader(int) {
-	w.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+func (w respWriterWrapper) WriteHeader(status int) {
+	w.ResponseWriter.WriteHeader(status)
+}
+
+type transformResponseWriter struct {
+	http.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (r *transformResponseWriter) Write(b []byte) (int, error) {
+	return r.body.Write(b)
+}
+
+// Returns a middleware that runs the transform function
+// Allows for modification of the HTML text returned to the browser
+func TransformPage(transformer func(html string) string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t := &transformResponseWriter{
+				body:           &bytes.Buffer{},
+				ResponseWriter: w,
+			}
+
+			next.ServeHTTP(t, r)
+
+			header := t.ResponseWriter.Header()
+			contentType := header.Get("Content-Type")
+			vary := header.Get("Vary")
+
+			if vary != "Golte" && contentType != "text/html; charset=utf-8" {
+				t.ResponseWriter.Write(t.body.Bytes())
+				return
+			}
+
+			modifiedBody := transformer(t.body.String())
+
+			t.body = &bytes.Buffer{}
+			t.Write([]byte(modifiedBody))
+			t.ResponseWriter.Write(t.body.Bytes())
+		})
+	}
 }
