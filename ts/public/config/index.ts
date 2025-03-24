@@ -1,4 +1,4 @@
-import type { UserConfig } from "vite";
+import type { InlineConfig } from "vite";
 
 export type Config = {
     /**
@@ -64,5 +64,5 @@ export type Config = {
     /**
      * Pass additional configuration options to Vite.
      */
-    vite?: UserConfig;
+    vite?: InlineConfig;
 };

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { build, UserConfig } from "vite";
+import { build, InlineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 import { cwd, argv } from "node:process";
@@ -63,6 +63,7 @@ async function extract(inputConfig: Config): Promise<ExtractedConfig> {
         assets: "golte_",
         mode: "prod",
         vite: {
+            configFile: false,
             build: {
                 cssCodeSplit: true,
             },
@@ -104,7 +105,8 @@ async function extract(inputConfig: Config): Promise<ExtractedConfig> {
 }
 
 async function buildClient(config: ExtractedConfig): Promise<ClientBuild> {
-    const viteConfig: UserConfig = {
+    const viteConfig: InlineConfig = {
+        configFile: false,
         mode: config.dev ? "development" : "production",
         base: config.assets,
         build: {
@@ -186,7 +188,8 @@ async function createManifest(components: ComponentFile[], manifest: ViteManifes
 }
 
 async function buildServer(config: ExtractedConfig, client: ClientBuild) {
-    const viteConfig: UserConfig = {
+    const viteConfig: InlineConfig = {
+        configFile: false,
         plugins: [
             // we can't use define because vite 5 no longer statically replaces
             //@ts-ignore for some reason there is typescript error here

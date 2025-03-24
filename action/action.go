@@ -66,7 +66,7 @@ func (a *ActionResult) ToCSR() ([]byte, error) {
 	case ActionResultError:
 		_json, err := json.Marshal(map[string]any{
 			"error": map[string]any{
-				"message": "Internal Error",
+				"message": a.Error,
 			},
 			"type": ActionResultError,
 		})
@@ -77,7 +77,14 @@ func (a *ActionResult) ToCSR() ([]byte, error) {
 
 		csrResponse = _json
 	case ActionResultRedirect:
+		jsonData, err := json.Marshal(a.Data)
+
+		if err != nil {
+			return nil, err
+		}
+
 		_json, err := json.Marshal(map[string]any{
+			"data":     string(jsonData),
 			"location": a.Location,
 			"status":   a.Status,
 			"type":     ActionResultRedirect,

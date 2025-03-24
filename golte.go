@@ -18,18 +18,17 @@ import (
 // Props must be JSON-serializable when passing to fuctions defined in this package.
 type Props = map[string]any
 
-type ActionFunc = func(r *http.Request, headers http.Header) action.ActionResult
+type ActionFunc = func(r *http.Request, w http.ResponseWriter) action.ActionResult
 
 func checkActionName(name string, query string) bool {
-	if len(query) == 0 {
-		return len(name) == 0
-	}
+	queryName := ""
 
-	if query[0] != '/' {
-		return false
+	for _, split := range strings.Split(query, "&") {
+		if strings.HasPrefix(split, "/") {
+			queryName = split[1:]
+			break
+		}
 	}
-
-	queryName := query[1 : len(query)-1]
 
 	return queryName == name
 }
@@ -166,6 +165,7 @@ func SetError(r *http.Request, component string) {
 func RenderPage(w http.ResponseWriter, r *http.Request, component string, props Props) {
 	rctx := MustGetRenderContext(r)
 
+	// TODO: Needs more thinking
 	layoutProps := GetParentProps(r)
 
 	if layoutProps != nil {
@@ -198,7 +198,7 @@ func RenderPageActions(w http.ResponseWriter, r *http.Request, component string,
 
 		for name, actionFunc := range actions {
 			if checkActionName(name, r.URL.RawQuery) {
-				result := actionFunc(r, w.Header())
+				result := actionFunc(r, w)
 
 				if csr {
 					csrResponse, err := result.ToCSR()
@@ -221,7 +221,7 @@ func RenderPageActions(w http.ResponseWriter, r *http.Request, component string,
 
 				if result.Type == action.ActionResultRedirect {
 					origin := r.Header.Get("origin")
-					referer := r.Header.Get("referer")
+					referer := r.Referer()
 
 					if referer != "" && strings.HasPrefix(referer, origin) && referer != fmt.Sprintf("%s%s", origin, r.URL.Path) {
 						result = action.Success(result.Data)

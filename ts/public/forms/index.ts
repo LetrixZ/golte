@@ -25,7 +25,7 @@ export async function applyAction(result: ActionResult) {
 
     switch (result.type) {
         case "redirect":
-            await goto(result.location, { invalidateAll: true });
+            await goto(result.location);
             break;
         case "error": {
             const currentNode = state.currentNode;
